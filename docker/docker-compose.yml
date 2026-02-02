@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with PostGIS
+  postgres:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: civiclens-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: kavya
+      POSTGRES_DB: civiclens
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - civiclens-network
+
+  # Redis for caching (optional, for production)
+  redis:
+    image: redis:7-alpine
+    container_name: civiclens-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - civiclens-network
+
+  # Flask Backend
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: civiclens-backend
+    environment:
+      - FLASK_APP=run.py
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://postgres:kavya@postgres:5432/civiclens
+      - JWT_SECRET_KEY=civiclens-jwt-secret-key-2026-production
+      - SECRET_KEY=civiclens-super-secret-key-2026-production
+      - CORS_ORIGINS=http://localhost:5173
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app
+      - backend_uploads:/app/uploads
+    networks:
+      - civiclens-network
+
+  # React Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: civiclens-frontend
+    environment:
+      - VITE_API_URL=http://localhost:5000/api
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    networks:
+      - civiclens-network
+
+networks:
+  civiclens-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_uploads:
