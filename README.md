@@ -1,6 +1,5 @@
 # CivicLens - AI-Powered Civic Problem Intelligence Platform
 
-![CivicLens Banner](https://via.placeholder.com/1200x400/1e293b/3b82f6?text=CivicLens+-+Smart+City+Complaint+Management)
 
 ## 🌟 Overview
 
